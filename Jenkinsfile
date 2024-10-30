@@ -2,11 +2,11 @@ pipeline {
     agent any
     
     tools {
-        sonarQube 'Sonar' // This must match the name of the SonarQube installation in Jenkins Global Tool Configuration
+        sonar 'Sonar' // Ensure 'Sonar' matches the SonarQube scanner name in Jenkins Global Tool Configuration
     }
     
     environment {
-        SONARQUBE_SERVER = 'Sonar' // SonarQube server configuration name in Jenkins
+        SONARQUBE_SERVER = 'Sonar' // The SonarQube server configuration name in Jenkins
         SONAR_PROJECT_KEY = 'jenkins-sonaa' // Replace with your project key
         SONAR_PROJECT_NAME = 'jenkins-sonaa' // Replace with your project name
         SONAR_PROJECT_VERSION = '1.0' // Replace with your project version
@@ -15,15 +15,15 @@ pipeline {
     stages {
         stage('SCM') {
             steps {
-                checkout scm // Pulls code from the repository specified in the job configuration
+                checkout scm
             }
         }
         
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    def scannerHome = tool 'Sonar' // Ensure 'Sonar' matches the configured SonarQube scanner in Jenkins
-                    withSonarQubeEnv(SONARQUBE_SERVER) { // Set the environment for SonarQube with server name
+                    def scannerHome = tool 'Sonar' // Ensure 'Sonar' matches your SonarQube scanner configuration name
+                    withSonarQubeEnv(SONARQUBE_SERVER) { // Sets up SonarQube environment
                         sh """
                             ${scannerHome}/bin/sonar-scanner \
                             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
