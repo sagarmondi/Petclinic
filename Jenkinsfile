@@ -1,81 +1,46 @@
 pipeline {
-    agent any 
+    agent any
     
-    tools{
-        jdk 'jdk11'
-        maven 'maven3'
+    tools {
+        sonarQube 'Sonar' // This must match the name of the SonarQube installation in Jenkins Global Tool Configuration
     }
     
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SONARQUBE_SERVER = 'Sonar' // SonarQube server configuration name in Jenkins
+        SONAR_PROJECT_KEY = 'jenkins-sonaa' // Replace with your project key
+        SONAR_PROJECT_NAME = 'jenkins-sonaa' // Replace with your project name
+        SONAR_PROJECT_VERSION = '1.0' // Replace with your project version
     }
     
-    stages{
-        
-        stage("Git Checkout"){
-            steps{
-                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/jaiswaladi246/Petclinic.git'
+    stages {
+        stage('SCM') {
+            steps {
+                checkout scm // Pulls code from the repository specified in the job configuration
             }
         }
         
-        stage("Compile"){
-            steps{
-                sh "mvn clean compile"
-            }
-        }
-        
-         stage("Test Cases"){
-            steps{
-                sh "mvn test"
-            }
-        }
-        
-        stage("Sonarqube Analysis "){
-            steps{
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petclinic \
-                    -Dsonar.java.binaries=. \
-                    -Dsonar.projectKey=Petclinic '''
-    
-                }
-            }
-        }
-        
-        stage("OWASP Dependency Check"){
-            steps{
-                dependencyCheck additionalArguments: '--scan ./ --format HTML ', odcInstallation: 'DP'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        
-         stage("Build"){
-            steps{
-                sh " mvn clean install"
-            }
-        }
-        
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: '58be877c-9294-410e-98ee-6a959d73b352', toolName: 'docker') {
-                        
-                        sh "docker build -t image1 ."
-                        sh "docker tag image1 adijaiswal/pet-clinic123:latest "
-                        sh "docker push adijaiswal/pet-clinic123:latest "
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'Sonar' // Ensure 'Sonar' matches the configured SonarQube scanner in Jenkins
+                    withSonarQubeEnv(SONARQUBE_SERVER) { // Set the environment for SonarQube with server name
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                            -Dsonar.projectVersion=${SONAR_PROJECT_VERSION} \
+                            -Dsonar.sources=.
+                        """
                     }
                 }
             }
         }
         
-        stage("TRIVY"){
-            steps{
-                sh " trivy image adijaiswal/pet-clinic123:latest"
-            }
-        }
-        
-        stage("Deploy To Tomcat"){
-            steps{
-                sh "cp  /var/lib/jenkins/workspace/CI-CD/target/petclinic.war /opt/apache-tomcat-9.0.65/webapps/ "
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
     }
