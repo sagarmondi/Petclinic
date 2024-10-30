@@ -1,23 +1,25 @@
 pipeline {
     agent any
     
-    
-    
     stages {
-        stage('SCM') {
-            checkout scm
-          }
-          stage('SonarQube Analysis') {
-            def scannerHome = tool 'Sonar';
-            withSonarQubeEnv() {
-              sh "${scannerHome}/bin/sonar-scanner"
-            }
-          }
-        
-        stage('Quality Gate') {
+        stage('Fetch Code') {
             steps {
-                timeout(time: 1, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                git 'https://github.com/sagarmondi/Petclinic.git'
+            }
+        }
+        stage('Code Analysis') {
+            environment {
+                scannerHome = tool 'Sonar' 
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('sonar') { 
+                        sh "${scannerHome}/bin/sonar-scanner \
+                            -Dsonar.projectKey= jenkins-sonaa \ 
+                            -Dsonar.projectName= jenkins-sonaa \ 
+                            -Dsonar.projectVersion=1.0 \ 
+                            -Dsonar.sources=." 
+                    }
                 }
             }
         }
